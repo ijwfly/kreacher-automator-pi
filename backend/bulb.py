@@ -2,13 +2,21 @@ import threading
 import time
 import schedule
 from lib.magicbulbcontrol import MagicBulb
+import lib.eventmanager as em
+
 
 # TODO: save current bulb state
-class BulbProcessor(object):
+class BulbProcessor(em.Subscriber):
 
     def __init__(self, bulb_addr):
         self.in_use = threading.Event()
         self.bulb = MagicBulb(bulb_addr)
+
+    def handle_event(self, event):
+        if event.name == "turnOn":
+            self.turn_on()
+        elif event.name == "turnOff":
+            self.turn_off()
 
     def turn_on(self):
         self.in_use.set()
@@ -58,7 +66,6 @@ class BulbProcessor(object):
     # alarm_time - "HH:mm", ex: "13:24"
     def set_alarm(self, alarm_time):
         schedule.every().day.at(alarm_time).do(self.alarm)
-        bot.reply_to(message, "Будильник установлен, господин!")
 
     def reset_alarms(self):
         schedule.clear()
