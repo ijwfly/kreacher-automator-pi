@@ -1,12 +1,12 @@
 import threading
 import time
-import schedule
+import settings
 from lib.magicbulbcontrol import MagicBulb
-import lib.eventmanager as em
+from exchange import Messenger, Event
 
 
 # TODO: save current bulb state
-class BulbProcessor(em.Subscriber):
+class BulbProcessor(object):
 
     def __init__(self, bulb_addr):
         self.in_use = threading.Event()
@@ -62,16 +62,34 @@ class BulbProcessor(em.Subscriber):
             time.sleep(7.1)
         self.bulb.disconnect()
         self.in_use.clear()
+    #
+    # # alarm_time - "HH:mm", ex: "13:24"
+    # def set_alarm(self, alarm_time):
+    #     schedule.every().day.at(alarm_time).do(self.alarm)
+    #
+    # def reset_alarms(self):
+    #     schedule.clear()
 
-    # alarm_time - "HH:mm", ex: "13:24"
-    def set_alarm(self, alarm_time):
-        schedule.every().day.at(alarm_time).do(self.alarm)
 
-    def reset_alarms(self):
-        schedule.clear()
+if __name__ == "__main__":
+    messenger = Messenger("localhost")
+    bulb = BulbProcessor(settings.MAGIC_BULB_ADDR)
 
-    def run(self):
-        while true:
-            schedule.run_pending()
-            time.sleep(10)
+    def handle_event(event):
+        print("event!")
+        print(event.__dict__)
+        if event.name == "turnOn":
+            bulb.turn_on()
+        elif event.name == "turnOff":
+            bulb.turn_off()
+        elif event.name == "turnOnSlowly":
+            bulb.turn_on_slowly()
+        elif event.name == "turnOffSlowly":
+            bulb.turn_off_slowly()
+        elif event.name == "alarm":
+            bulb.alarm()
 
+    print("registered!")
+
+    messenger.subscribe_backend("bulb", handle_event)
+    messenger.wait_for_messages(False)

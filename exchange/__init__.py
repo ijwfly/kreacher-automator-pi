@@ -4,9 +4,9 @@ import threading
 
 
 class Event(object):
-    def __init__(self, sender, name, data):
-        self.sender = sender
+    def __init__(self, name, sender=None, data=None):
         self.name = name
+        self.sender = sender
         self.data = data
 
     def __str__(self):
@@ -17,7 +17,7 @@ def message_handler(callback):
     def handler(ch, method, properties, body):
         event_dict = json.loads(body.decode("utf-8"))
         if 'sender' in event_dict and 'name' in event_dict and 'data' in event_dict:
-            callback(Event(event_dict['sender'], event_dict['name'], event_dict['data']))
+            callback(Event(**event_dict))
         else:
             raise "can't parse event dict"
     return handler
@@ -52,6 +52,6 @@ class Messenger(object):
     def wait_for_messages(self, non_blocking=True):
         if non_blocking:
             self.thread = threading.Thread(target=self.channel.start_consuming)
-            self.thread.run()
+            self.thread.start()
         else:
             self.channel.start_consuming()
