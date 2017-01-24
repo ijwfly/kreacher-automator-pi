@@ -18,6 +18,8 @@ commands = {
 
 answers = {
     "onStart": "Кикимер живет, чтобы служить благородному дому Блеков.",
+    "lightIsOn": "Свет включен, господин!",
+    "lightIsOff": "Свет выключен, господин!",
     "imSorry": "Простите, господин, произошла какая-то ошибка...",
     "alarmIsSet": "Будильник установлен, господин!",
     "alarmsAreReset": "Все будильники сброшены, господин!",
@@ -56,7 +58,7 @@ def is_command(command_name):
     return telebot_handler
 
 
-#TODO: пробрасывать сообщения об успехе/провале обратно
+# TODO: пробрасывать сообщения об успехе/провале обратно
 @bot.message_handler(commands=["start"])
 def on_start(message):
     bot.reply_to(message, answers["onStart"], reply_markup=get_menu())
@@ -64,12 +66,12 @@ def on_start(message):
 
 @bot.message_handler(func=is_command("lightOn"))
 def turn_light_on(message):
-    messenger.publish_to_backend("bulb", Event("turnOn"))
+    messenger.publish_to_backend("bulb", Event("turnOn"), lambda event: bot.reply_to(message, answers["lightIsOn"]))
 
 
 @bot.message_handler(func=is_command("lightOff"))
 def turn_light_off(message):
-    messenger.publish_to_backend("bulb", Event("turnOff"))
+    messenger.publish_to_backend("bulb", Event("turnOff"), lambda event: bot.reply_to(message, answers["lightIsOff"]))
 
 
 @bot.message_handler(func=is_command("sunrise"))

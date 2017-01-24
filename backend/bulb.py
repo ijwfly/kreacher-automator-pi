@@ -62,13 +62,6 @@ class BulbProcessor(object):
             time.sleep(7.1)
         self.bulb.disconnect()
         self.in_use.clear()
-    #
-    # # alarm_time - "HH:mm", ex: "13:24"
-    # def set_alarm(self, alarm_time):
-    #     schedule.every().day.at(alarm_time).do(self.alarm)
-    #
-    # def reset_alarms(self):
-    #     schedule.clear()
 
 
 if __name__ == "__main__":
@@ -80,8 +73,10 @@ if __name__ == "__main__":
         print(event.__dict__)
         if event.name == "turnOn":
             bulb.turn_on()
+            return Event("success")
         elif event.name == "turnOff":
             bulb.turn_off()
+            return Event("success")
         elif event.name == "turnOnSlowly":
             bulb.turn_on_slowly()
         elif event.name == "turnOffSlowly":
