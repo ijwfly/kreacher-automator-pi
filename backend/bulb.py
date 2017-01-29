@@ -69,8 +69,6 @@ if __name__ == "__main__":
     bulb = BulbProcessor(settings.MAGIC_BULB_ADDR)
 
     def handle_event(event):
-        print("event!")
-        print(event.__dict__)
         if event.name == "turnOn":
             bulb.turn_on()
             return Event("success")
