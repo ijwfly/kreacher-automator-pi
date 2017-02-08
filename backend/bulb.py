@@ -2,7 +2,7 @@ import threading
 import time
 import settings
 from lib.magicbulbcontrol import MagicBulb
-from exchange import Messenger, Event
+from exchange import Messenger, BulbEvents, CommonEvents
 
 
 # TODO: save current bulb state
@@ -13,10 +13,20 @@ class BulbProcessor(object):
         self.bulb = MagicBulb(bulb_addr)
 
     def handle_event(self, event):
-        if event.name == "turnOn":
-            self.turn_on()
-        elif event.name == "turnOff":
-            self.turn_off()
+        try:
+            if event.is_an(BulbEvents.EventTurnOn):
+                self.turn_on()
+                return CommonEvents.EventSuccess()
+            elif event.is_an(BulbEvents.EventTurnOff):
+                self.turn_off()
+                return CommonEvents.EventSuccess()
+            elif event.is_an(BulbEvents.EventTurnSlowly):
+                print(event.turn_to)
+                print(event.time_sec)
+                return CommonEvents.EventSuccess()
+        except Exception:
+            return CommonEvents.EventFailure()
+
 
     def turn_on(self):
         self.in_use.set()
@@ -67,22 +77,22 @@ class BulbProcessor(object):
 if __name__ == "__main__":
     messenger = Messenger("localhost")
     bulb = BulbProcessor(settings.MAGIC_BULB_ADDR)
-
-    def handle_event(event):
-        if event.name == "turnOn":
-            bulb.turn_on()
-            return Event("success")
-        elif event.name == "turnOff":
-            bulb.turn_off()
-            return Event("success")
-        elif event.name == "turnOnSlowly":
-            bulb.turn_on_slowly()
-        elif event.name == "turnOffSlowly":
-            bulb.turn_off_slowly()
-        elif event.name == "alarm":
-            bulb.alarm()
+    #
+    # def handle_event(event):
+    #     if event.name == "turnOn":
+    #         bulb.turn_on()
+    #         return Event("success")
+    #     elif event.name == "turnOff":
+    #         bulb.turn_off()
+    #         return Event("success")
+    #     elif event.name == "turnOnSlowly":
+    #         bulb.turn_on_slowly()
+    #     elif event.name == "turnOffSlowly":
+    #         bulb.turn_off_slowly()
+    #     elif event.name == "alarm":
+    #         bulb.alarm()
 
     print("registered!")
 
-    messenger.subscribe_backend("bulb", handle_event)
+    messenger.subscribe_backend("bulb", bulb.handle_event)
     messenger.wait_for_messages(False)

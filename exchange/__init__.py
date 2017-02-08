@@ -5,35 +5,59 @@ import uuid
 
 
 class Event(object):
-    def __init__(self, name, sender=None, data=None):
-        self.name = name
-        self.sender = sender
-        self.data = data
 
-    def __str__(self):
-        return self.sender + ": [" + self.name + "] " + self.data
+    registered_events = {}
 
-    def json(self):
-        return json.dumps(self, default=lambda o: o.__dict__)
+    class JSONEncoder(json.JSONEncoder):
+        def default(self, obj):
+            if isinstance(obj, Event):
+                obj_dict = {"name": type(obj).__name__}
+                obj_dict.update(obj.__dict__)
+                return obj_dict
+            else:
+                json.JSONEncoder.default(self, obj)
+
+    class JSONDecoder(json.JSONDecoder):
+        def decode(self, obj):
+            obj_dict = json.loads(obj)
+
+            if "name" not in obj_dict:
+                raise TypeError
+
+            event_name = obj_dict["name"]
+            del(obj_dict["name"])
+
+            if event_name in Event.registered_events:
+                return Event.registered_events[event_name](**obj_dict)
+            else:
+                return Event(event_name)
+
+    def __init__(self, name=None):
+        if name:
+            self.name = name
+        else:
+            self.name = type(self).__name__
+
+    def is_an(self, event_class):
+        return type(self).__name__ == event_class.__name__
 
     @staticmethod
-    def from_json(event_json):
-        event_dict = json.loads(event_json)
-        if 'sender' in event_dict and 'name' in event_dict and 'data' in event_dict:
-            return Event(**event_dict)
-        else:
-            raise "can't parse event dict"
+    def register_event(event_class):
+        Event.registered_events[event_class.__name__] = event_class
+        return event_class
 
 
 def message_handler(callback):
     def handler(ch, method, properties, body):
-        event = Event.from_json(body.decode("utf-8"))
+        decoder = Event.JSONDecoder()
+        event = decoder.decode(body.decode("utf-8"))
         response = callback(event)
         if response:
+            response_json = json.dumps(response, cls=Event.JSONEncoder)
             ch.basic_publish(exchange='',
                              routing_key=properties.reply_to,
                              properties=pika.BasicProperties(correlation_id=properties.correlation_id),
-                             body=response.json())
+                             body=response_json)
     return handler
 
 
@@ -52,7 +76,10 @@ class Messenger(object):
 
     def _process_response(self, ch, method, properties, body):
         if properties.correlation_id in self.response_callbacks:
-            self.response_callbacks[properties.correlation_id](Event.from_json(body.decode("utf-8")))
+            decoder = Event.JSONDecoder()
+            event = decoder.decode(body.decode("utf-8"))
+
+            self.response_callbacks[properties.correlation_id](event)
             del(self.response_callbacks[properties.correlation_id])
 
     def _add_response_callback(self, callback):
@@ -74,18 +101,20 @@ class Messenger(object):
         self.channel.basic_consume(message_handler(callback), queue=queue, no_ack=True)
 
     def publish_to_frontend(self, event, response_callback=None):
+        event_json = json.dumps(event, cls=Event.JSONEncoder)
         properties = None
         if response_callback:
             properties = self._add_response_callback(response_callback)
         self.channel.basic_publish(exchange='frontend', routing_key='',
-                                   body=event.json(), properties=properties)
+                                   body=event_json, properties=properties)
 
     def publish_to_backend(self, subscriber_name, event, response_callback=None):
+        event_json = json.dumps(event, cls=Event.JSONEncoder)
         properties = None
         if response_callback:
             properties = self._add_response_callback(response_callback)
         self.channel.basic_publish(exchange='backend', routing_key=subscriber_name,
-                                   body=event.json(), properties=properties)
+                                   body=event_json, properties=properties)
 
     def wait_for_messages(self, non_blocking=True):
         if non_blocking:

@@ -1,7 +1,8 @@
 import telebot
 import settings
 import logging
-from exchange import Messenger, Event
+from exchange import Messenger
+from exchange import CommonEvents, BulbEvents
 
 commands = {
     "lightOn": "Включи свет",
@@ -23,11 +24,20 @@ answers = {
     "imSorry": "Простите, господин, произошла какая-то ошибка...",
     "alarmIsSet": "Будильник установлен, господин!",
     "alarmsAreReset": "Все будильники сброшены, господин!",
-    "notImplemented": "Простите, но я пока не научился таким фокусам"
+    "notImplemented": "Простите, но я пока не научился таким фокусам",
+    "sunRisen": "Солнце уже высоко, господин",
+    "sunSet": "Крепкого сна, господин"
 }
 
 bot = telebot.TeleBot(settings.TELEGRAM_TOKEN, skip_pending=True)
 messenger = Messenger(settings.RABBITMQ_HOST)
+
+
+def check_result(message, event, success_answer, fail_answer=answers["imSorry"]):
+    if event.is_an(CommonEvents.EventSuccess):
+        bot.reply_to(message, success_answer)
+    else:
+        bot.reply_to(message, fail_answer)
 
 
 def get_menu():
@@ -66,47 +76,52 @@ def on_start(message):
 
 @bot.message_handler(func=is_command("lightOn"))
 def turn_light_on(message):
-    messenger.publish_to_backend("bulb", Event("turnOn"), lambda event: bot.reply_to(message, answers["lightIsOn"]))
+    messenger.publish_to_backend("bulb", BulbEvents.EventTurnOn(),
+                                 lambda event: check_result(message, event, answers["lightIsOn"]))
 
 
 @bot.message_handler(func=is_command("lightOff"))
 def turn_light_off(message):
-    messenger.publish_to_backend("bulb", Event("turnOff"), lambda event: bot.reply_to(message, answers["lightIsOff"]))
+    messenger.publish_to_backend("bulb", BulbEvents.EventTurnOff(),
+                                 lambda event: check_result(message, event, answers["lightIsOff"]))
 
 
 @bot.message_handler(func=is_command("sunrise"))
 def turn_light_on_slowly(message):
-    messenger.publish_to_backend("bulb", Event("turnOnSlowly"))
+    messenger.publish_to_backend("bulb", BulbEvents.EventTurnSlowly(True, 180),
+                                 lambda event: check_result(message, event, answers["sunRisen"]))
 
 
 @bot.message_handler(func=is_command("sunset"))
 def turn_light_off_slowly(message):
-    messenger.publish_to_backend("bulb", Event("turnOffSlowly"))
+    messenger.publish_to_backend("bulb", BulbEvents.EventTurnSlowly(False, 180),
+                                 lambda event: check_result(message, event, answers["sunSet"]))
 
+#
+# @bot.message_handler(func=is_command("setAlarm"))
+# def set_alarm(message):
+#     msg = bot.reply_to(message, "Во сколько начинать рассвет для господина?")
+#
+#     def process_alarm(message):
+#         alarm_time = message.text
+#         alarm_event = Event("alarm")
+#         event = Event("scheduleTaskTime", data={
+#             "time": alarm_time,
+#             "receiver": "bulb",
+#             "event": alarm_event
+#         })
+#         messenger.publish_to_backend("scheduler", event)
+#         # TODO: проверять успешность
+#         bot.reply_to(message, answers["alarmIsSet"])
+#
+#     bot.register_next_step_handler(msg, process_alarm)
 
-@bot.message_handler(func=is_command("setAlarm"))
-def set_alarm(message):
-    msg = bot.reply_to(message, "Во сколько начинать рассвет для господина?")
+#
+# @bot.message_handler(func=is_command("resetAlarms"))
+# def reset_alarms(message):
+#     messenger.publish_to_backend("scheduler", Event("resetAllScheduledTasks"))
+#     bot.reply_to(message, answers["alarmsAreReset"])
 
-    def process_alarm(message):
-        alarm_time = message.text
-        alarm_event = Event("alarm")
-        event = Event("scheduleTaskTime", data={
-            "time": alarm_time,
-            "receiver": "bulb",
-            "event": alarm_event
-        })
-        messenger.publish_to_backend("scheduler", event)
-        # TODO: проверять успешность
-        bot.reply_to(message, answers["alarmIsSet"])
-
-    bot.register_next_step_handler(msg, process_alarm)
-
-
-@bot.message_handler(func=is_command("resetAlarms"))
-def reset_alarms(message):
-    messenger.publish_to_backend("scheduler", Event("resetAllScheduledTasks"))
-    bot.reply_to(message, answers["alarmsAreReset"])
 
 # TODO: не реализованные
 @bot.message_handler(func=is_command("mopidyOn"))
