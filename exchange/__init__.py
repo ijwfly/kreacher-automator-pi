@@ -32,11 +32,8 @@ class Event(object):
             else:
                 return Event(event_name)
 
-    def __init__(self, name=None):
-        if name:
-            self.name = name
-        else:
-            self.name = type(self).__name__
+    def __init__(self):
+        self.name = type(self).__name__
 
     def is_an(self, event_class):
         return type(self).__name__ == event_class.__name__
