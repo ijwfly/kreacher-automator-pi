@@ -2,7 +2,7 @@ import time
 import logging
 import schedule
 import settings
-from exchange import Messenger, Event
+from exchange import Messenger, SchedulerEvents, CommonEvents, BulbEvents
 
 messenger = Messenger(settings.RABBITMQ_HOST)
 
@@ -14,15 +14,14 @@ def do_scheduled_action(receiver, event):
 
 
 def handle_event(event):
-    if event.name == "scheduleTaskTime":
-        if event.data:
-            schedule.every().day.at(event.data["time"]).do(
-                do_scheduled_action(event.data["receiver"], Event(**event.data["event"]))
-            )
-        print("event is set")
-    elif event.name == "resetAllScheduledTasks":
+    if event.is_an(SchedulerEvents.EventScheduleTo):
+        schedule.every().day.at(event.time).do(
+            do_scheduled_action(event.receiver, event.get_event())
+        )
+        return CommonEvents.EventSuccess()
+    elif event.is_an(SchedulerEvents.ClearScheduledTasks):
         schedule.clear()
-        print("all events are cleared")
+        return CommonEvents.EventSuccess()
 
 
 if __name__ == "__main__":

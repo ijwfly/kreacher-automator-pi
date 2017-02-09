@@ -2,7 +2,7 @@ import telebot
 import settings
 import logging
 from exchange import Messenger
-from exchange import CommonEvents, BulbEvents
+from exchange import CommonEvents, BulbEvents, SchedulerEvents
 
 commands = {
     "lightOn": "Включи свет",
@@ -97,30 +97,25 @@ def turn_light_off_slowly(message):
     messenger.publish_to_backend("bulb", BulbEvents.EventTurnSlowly(False, 180),
                                  lambda event: check_result(message, event, answers["sunSet"]))
 
-#
-# @bot.message_handler(func=is_command("setAlarm"))
-# def set_alarm(message):
-#     msg = bot.reply_to(message, "Во сколько начинать рассвет для господина?")
-#
-#     def process_alarm(message):
-#         alarm_time = message.text
-#         alarm_event = Event("alarm")
-#         event = Event("scheduleTaskTime", data={
-#             "time": alarm_time,
-#             "receiver": "bulb",
-#             "event": alarm_event
-#         })
-#         messenger.publish_to_backend("scheduler", event)
-#         # TODO: проверять успешность
-#         bot.reply_to(message, answers["alarmIsSet"])
-#
-#     bot.register_next_step_handler(msg, process_alarm)
 
-#
-# @bot.message_handler(func=is_command("resetAlarms"))
-# def reset_alarms(message):
-#     messenger.publish_to_backend("scheduler", Event("resetAllScheduledTasks"))
-#     bot.reply_to(message, answers["alarmsAreReset"])
+@bot.message_handler(func=is_command("setAlarm"))
+def set_alarm(message):
+    msg = bot.reply_to(message, "Во сколько начинать рассвет для господина?")
+
+    def process_alarm(message):
+        alarm_time = message.text
+        alarm_event = BulbEvents.EventTurnSlowly(True, 1800)
+        scheduler_event = SchedulerEvents.EventScheduleTo(alarm_time, "bulb", alarm_event)
+        messenger.publish_to_backend("scheduler", scheduler_event,
+                                     lambda event: check_result(message, event, answers["alarmIsSet"]))
+
+    bot.register_next_step_handler(msg, process_alarm)
+
+
+@bot.message_handler(func=is_command("resetAlarms"))
+def reset_alarms(message):
+    messenger.publish_to_backend("scheduler", SchedulerEvents.ClearScheduledTasks(),
+                                 lambda event: check_result(message, event, answers["imSorry"]))
 
 
 # TODO: не реализованные

@@ -21,12 +21,13 @@ class BulbProcessor(object):
                 self.turn_off()
                 return CommonEvents.EventSuccess()
             elif event.is_an(BulbEvents.EventTurnSlowly):
-                print(event.turn_to)
-                print(event.time_sec)
+                if event.turn_to:
+                    self.turn_on_slowly(event.time_sec)
+                else:
+                    self.turn_off_slowly(event.time_sec)
                 return CommonEvents.EventSuccess()
-        except Exception:
+        except:
             return CommonEvents.EventFailure()
-
 
     def turn_on(self):
         self.in_use.set()
@@ -42,34 +43,25 @@ class BulbProcessor(object):
         self.bulb.disconnect()
         self.in_use.clear()
 
-    # TODO: add time argument, remove alarm function
-    def turn_on_slowly(self):
+    def turn_on_slowly(self, timeout):
         self.in_use.set()
         self.bulb.connect()
+        delay = timeout / 255.0
         for brightness in range(0, 255):
             self.bulb.set_color(0, 0, 0, brightness)
-            time.sleep(0.7)
-        self.bulb.set_color(0, 0, 0, 255)
+            time.sleep(delay)
+        self.bulb_set_color(0, 0, 0, 255)
         self.bulb.disconnect()
         self.in_use.clear()
 
-    # TODO: add time argument
-    def turn_off_slowly(self):
+    def turn_off_slowly(self, timeout):
         self.in_use.set()
         self.bulb.connect()
+        delay = timeout / 255.0
         for brightness in range(255, 0, -1):
             self.bulb.set_color(0, 0, 0, brightness)
-            time.sleep(0.7)
+            time.sleep(delay)
         self.bulb.set_color(0, 0, 0, 0)
-        self.bulb.disconnect()
-        self.in_use.clear()
-
-    def alarm(self):
-        self.in_use.set()
-        self.bulb.connect()
-        for brightness in range(0, 255):
-            self.bulb.set_color(0, 0, 0, brightness)
-            time.sleep(7.1)
         self.bulb.disconnect()
         self.in_use.clear()
 
@@ -77,22 +69,8 @@ class BulbProcessor(object):
 if __name__ == "__main__":
     messenger = Messenger("localhost")
     bulb = BulbProcessor(settings.MAGIC_BULB_ADDR)
-    #
-    # def handle_event(event):
-    #     if event.name == "turnOn":
-    #         bulb.turn_on()
-    #         return Event("success")
-    #     elif event.name == "turnOff":
-    #         bulb.turn_off()
-    #         return Event("success")
-    #     elif event.name == "turnOnSlowly":
-    #         bulb.turn_on_slowly()
-    #     elif event.name == "turnOffSlowly":
-    #         bulb.turn_off_slowly()
-    #     elif event.name == "alarm":
-    #         bulb.alarm()
-
-    print("registered!")
 
     messenger.subscribe_backend("bulb", bulb.handle_event)
+    print("registered!")
+
     messenger.wait_for_messages(False)

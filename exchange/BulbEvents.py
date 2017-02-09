@@ -6,6 +6,7 @@ class EventTurnOn(Event):
     def __init__(self):
         pass
 
+
 @Event.register_event
 class EventTurnOff(Event):
     def __init__(self):

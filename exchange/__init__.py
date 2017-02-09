@@ -49,7 +49,7 @@ def message_handler(callback):
         decoder = Event.JSONDecoder()
         event = decoder.decode(body.decode("utf-8"))
         response = callback(event)
-        if response:
+        if response and properties.reply_to:
             response_json = json.dumps(response, cls=Event.JSONEncoder)
             ch.basic_publish(exchange='',
                              routing_key=properties.reply_to,
@@ -98,7 +98,7 @@ class Messenger(object):
         self.channel.basic_consume(message_handler(callback), queue=queue, no_ack=True)
 
     def publish_to_frontend(self, event, response_callback=None):
-        event_json = json.dumps(event, cls=Event.JSONEncoder)
+        event_json = json.dumps(event, cls=event.JSONEncoder)
         properties = None
         if response_callback:
             properties = self._add_response_callback(response_callback)
