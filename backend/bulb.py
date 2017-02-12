@@ -67,7 +67,7 @@ class BulbProcessor(object):
 
 
 if __name__ == "__main__":
-    messenger = Messenger("localhost")
+    messenger = Messenger(settings.RABBITMQ_HOST)
     bulb = BulbProcessor(settings.MAGIC_BULB_ADDR)
 
     messenger.subscribe_backend("bulb", bulb.handle_event)

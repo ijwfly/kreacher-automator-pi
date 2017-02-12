@@ -2,7 +2,7 @@ import telebot
 import settings
 import logging
 from exchange import Messenger
-from exchange import CommonEvents, BulbEvents, SchedulerEvents
+from exchange import CommonEvents, BulbEvents, SchedulerEvents, SystemCmdEvents
 
 commands = {
     "lightOn": "Включи свет",
@@ -15,6 +15,7 @@ commands = {
     "mopidyOff": "Выключи mopidy",
     "tvOn": "Включи телевизор",
     "tvOff": "Выключи телевизор",
+    "forceTvSource": "Переключи телевизор"
 }
 
 answers = {
@@ -26,7 +27,12 @@ answers = {
     "alarmsAreReset": "Все будильники сброшены, господин!",
     "notImplemented": "Простите, но я пока не научился таким фокусам",
     "sunRisen": "Солнце уже высоко, господин",
-    "sunSet": "Крепкого сна, господин"
+    "sunSet": "Крепкого сна, господин",
+    "mopidyIsOn": "Mopidy включен, господин",
+    "mopidyIsOff": "Mopidy выключен, господин",
+    "tvIsOn": "Телевизор включен, господин",
+    "tvIsOff": "Телевизор выключен, господин",
+    "tvSourceForced": "Канал переключен на малину, господин"
 }
 
 bot = telebot.TeleBot(settings.TELEGRAM_TOKEN, skip_pending=True)
@@ -42,23 +48,28 @@ def check_result(message, event, success_answer, fail_answer=answers["imSorry"])
 
 def get_menu():
     markup = telebot.types.ReplyKeyboardMarkup(row_width=2)
-    button_light_on = telebot.types.KeyboardButton(commands["lightOn"])
-    button_light_off = telebot.types.KeyboardButton(commands["lightOff"])
-    button_sunrise = telebot.types.KeyboardButton(commands["sunrise"])
-    button_sunset = telebot.types.KeyboardButton(commands["sunset"])
-    button_set_alarm = telebot.types.KeyboardButton(commands["setAlarm"])
-    button_reset_alarms = telebot.types.KeyboardButton(commands["resetAlarms"])
 
-    button_mopidy_on = telebot.types.KeyboardButton(commands["mopidyOn"])
-    button_mopidy_off = telebot.types.KeyboardButton(commands["mopidyOff"])
-    button_tv_on = telebot.types.KeyboardButton(commands["tvOn"])
-    button_tv_off = telebot.types.KeyboardButton(commands["tvOff"])
+    button = telebot.types.KeyboardButton
+    button_light_on = button(commands["lightOn"])
+    button_light_off = button(commands["lightOff"])
+    button_sunrise = button(commands["sunrise"])
+    button_sunset = button(commands["sunset"])
+    button_set_alarm = button(commands["setAlarm"])
+    button_reset_alarms = button(commands["resetAlarms"])
+
+    button_mopidy_on = button(commands["mopidyOn"])
+    button_mopidy_off = button(commands["mopidyOff"])
+    button_tv_on = button(commands["tvOn"])
+    button_tv_off = button(commands["tvOff"])
+    button_force_tv = button(commands["forceTvSource"])
 
     markup.add(button_light_on, button_light_off,
                button_sunrise, button_sunset,
                button_set_alarm, button_reset_alarms,
                button_mopidy_on, button_mopidy_off,
-               button_tv_on, button_tv_off)
+               button_tv_on, button_tv_off,
+               button_force_tv)
+
     return markup
 
 
@@ -68,7 +79,6 @@ def is_command(command_name):
     return telebot_handler
 
 
-# TODO: пробрасывать сообщения об успехе/провале обратно
 @bot.message_handler(commands=["start"])
 def on_start(message):
     bot.reply_to(message, answers["onStart"], reply_markup=get_menu())
@@ -118,41 +128,42 @@ def reset_alarms(message):
                                  lambda event: check_result(message, event, answers["imSorry"]))
 
 
-# TODO: не реализованные
 @bot.message_handler(func=is_command("mopidyOn"))
 def mopidy_on(message):
-    # subprocess.call(['nohup mopidy &'], shell=True)
-    # bot.reply_to(message, "Mopidy запущен, господин!")
-    bot.reply_to(message, answers["notImplemented"])
+    messenger.publish_to_backend("systemcmd", SystemCmdEvents.EventTurnMopidyOn(),
+                                 lambda event: check_result(message, event, answers["mopidyIsOn"]))
 
 
 @bot.message_handler(func=is_command("mopidyOff"))
 def mopidy_off(message):
-    # subprocess.call(['pkill mopidy'], shell=True)
-    # bot.reply_to(message, "Mopidy остановлен, господин!")
-    bot.reply_to(message, answers["notImplemented"])
+    messenger.publish_to_backend("systemcmd", SystemCmdEvents.EventTurnMopidyOff(),
+                                 lambda event: check_result(message, event, answers["mopidyIsOff"]))
 
 
 @bot.message_handler(func=is_command("tvOn"))
 def tv_on(message):
-    # subprocess.call(['/home/pi/useful_scripts/control_tv/turn_on.sh'], shell=True)
-    # bot.reply_to(message, "Телевизор включен, господин!")
-    bot.reply_to(message, answers["notImplemented"])
+    messenger.publish_to_backend("systemcmd", SystemCmdEvents.EventTurnTvOn(),
+                                 lambda event: check_result(message, event, answers["tvIsOn"]))
 
 
 @bot.message_handler(func=is_command("tvOff"))
 def tv_off(message):
-    # subprocess.call(['/home/pi/useful_scripts/control_tv/turn_off.sh'], shell=True)
-    # bot.reply_to(message, "Телевизор выключен, господин!")
-    bot.reply_to(message, answers["notImplemented"])
+    messenger.publish_to_backend("systemcmd", SystemCmdEvents.EventTurnTvOff(),
+                                 lambda event: check_result(message, event, answers["tvIsOff"]))
+
+
+@bot.message_handler(func=is_command("forceTvSource"))
+def tv_off(message):
+    messenger.publish_to_backend("systemcmd", SystemCmdEvents.EventForceTvSource(),
+                                 lambda event: check_result(message, event, answers["tvSourceForced"]))
 
 
 def handle_event(event):
-    if event.name == "adminNotify":
-        if event.data:
-            bot.send_message(settings.TELEGRAM_ADMIN_ID, event.data)
+    if event.is_an(CommonEvents.EventInfo):
+        if event.info:
+            bot.send_message(settings.TELEGRAM_ADMIN_ID, event.info)
         else:
-            bot.send_message(settings.TELEGRAM_ADMIN_ID, "Уведомление!")
+            bot.send_message(settings.TELEGRAM_ADMIN_ID, "Меня о чем-то уведомили, господин. Но я не знаю о чем...")
 
 
 if __name__ == "__main__":
