@@ -2,3 +2,4 @@ pyTelegramBotAPI
 bluepy
 schedule
 pika
+requests

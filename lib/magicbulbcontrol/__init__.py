@@ -1,5 +1,6 @@
 from bluepy import btle
 
+
 class MagicBulb(object):
     """ A simple chinese magic bulb with bluetooth control
 

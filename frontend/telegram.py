@@ -2,7 +2,7 @@ import telebot
 import settings
 import logging
 from exchange import Messenger
-from exchange import CommonEvents, BulbEvents, SchedulerEvents, SystemCmdEvents
+from exchange import CommonEvents, BulbEvents, SchedulerEvents, SystemCmdEvents, PresenceNotifierEvents
 
 commands = {
     "lightOn": "Включи свет",
@@ -125,7 +125,7 @@ def set_alarm(message):
 @bot.message_handler(func=is_command("resetAlarms"))
 def reset_alarms(message):
     messenger.publish_to_backend("scheduler", SchedulerEvents.ClearScheduledTasks(),
-                                 lambda event: check_result(message, event, answers["imSorry"]))
+                                 lambda event: check_result(message, event, answers["alarmsAreReset"]))
 
 
 @bot.message_handler(func=is_command("mopidyOn"))
@@ -158,12 +158,41 @@ def tv_off(message):
                                  lambda event: check_result(message, event, answers["tvSourceForced"]))
 
 
+def presence_notifier_handler(event):
+    message = ""
+    if len(event.connected_users):
+        message += "Подключены новые пользователи: "
+        for user in event.connected_users:
+            message += user.name + " "
+        message += "\n"
+    if len(event.disconnected_users):
+        message += "Пользователи отключились от сети: "
+        for user in event.disconnected_users:
+            message += user.name + " "
+        message += "\n"
+    if len(event.connected_unknown_devices):
+        message += "Подключены неизвестные устройства: "
+        for device in event.connected_unknown_devices:
+            print(device)
+            message += device["mac_addr"]
+        message += "\n"
+    if len(event.disconnected_unknown_devices):
+        message += "Неизвестные устройства отключились от сети: "
+        for device in event.disconnected_unknown_devices:
+            print(device)
+            message += device["mac_addr"]
+        message += "\n"
+    bot.send_message(settings.TELEGRAM_ADMIN_ID, message)
+
+
 def handle_event(event):
     if event.is_an(CommonEvents.EventInfo):
         if event.info:
-            bot.send_message(settings.TELEGRAM_ADMIN_ID, event.info)
+            bot.send_message(settings.TELEGRAM_ADMIN_ID, "Господин, вам уведомление! Текст такой: " + event.info)
         else:
             bot.send_message(settings.TELEGRAM_ADMIN_ID, "Меня о чем-то уведомили, господин. Но я не знаю о чем...")
+    elif event.is_an(PresenceNotifierEvents.EventNotify):
+        presence_notifier_handler(event)
 
 
 if __name__ == "__main__":
