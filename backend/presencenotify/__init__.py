@@ -2,10 +2,11 @@ import time
 import settings
 from backend.presencenotify.router_scraper import RouterScraper
 from exchange import Messenger, PresenceNotifierEvents
+from exchange.json_generic import JSONSerializibleMixin
 
 
-class User(object):
-    def __init__(self, name):
+class User(JSONSerializibleMixin):
+    def __init__(self, name=None):
         self.name = name
         self.devices = {}
 
@@ -84,3 +85,8 @@ class PresenceNotifier(object):
                 result = self.process_devices(connected_devices, disconnected_devices)
                 messenger.publish_to_frontend(PresenceNotifierEvents.EventNotify(*result))
             time.sleep(settings.PRESENCE_NOTIFIER_CHECK_INTERVAL)
+
+
+if __name__ == "__main__":
+    pn = PresenceNotifier()
+    pn.run()

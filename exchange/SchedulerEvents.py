@@ -1,7 +1,6 @@
 from exchange import Event
 
 
-@Event.register_event
 class EventScheduleTo(Event):
 
     def __init__(self, time, receiver, event):
@@ -25,7 +24,6 @@ class EventScheduleTo(Event):
             return Event(event_name)
 
 
-@Event.register_event
 class ClearScheduledTasks(Event):
     def __init__(self):
         pass

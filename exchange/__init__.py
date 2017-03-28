@@ -2,35 +2,10 @@ import pika
 import json
 import threading
 import uuid
+from exchange import json_generic
 
 
-class Event(object):
-
-    registered_events = {}
-
-    class JSONEncoder(json.JSONEncoder):
-        def default(self, obj):
-            if isinstance(obj, Event):
-                obj_dict = {"name": type(obj).__name__}
-                obj_dict.update(obj.__dict__)
-                return obj_dict
-            else:
-                json.JSONEncoder.default(self, obj)
-
-    class JSONDecoder(json.JSONDecoder):
-        def decode(self, obj):
-            obj_dict = json.loads(obj)
-
-            if "name" not in obj_dict:
-                raise TypeError
-
-            event_name = obj_dict["name"]
-            del(obj_dict["name"])
-
-            if event_name in Event.registered_events:
-                return Event.registered_events[event_name](**obj_dict)
-            else:
-                return Event(event_name)
+class Event(json_generic.JSONSerializibleMixin):
 
     def __init__(self):
         self.name = type(self).__name__
@@ -38,19 +13,13 @@ class Event(object):
     def is_an(self, event_class):
         return type(self).__name__ == event_class.__name__
 
-    @staticmethod
-    def register_event(event_class):
-        Event.registered_events[event_class.__name__] = event_class
-        return event_class
-
 
 def message_handler(callback):
     def handler(ch, method, properties, body):
-        decoder = Event.JSONDecoder()
-        event = decoder.decode(body.decode("utf-8"))
+        event = json_generic.decode(body.decode("utf-8"))
         response = callback(event)
         if response and properties.reply_to:
-            response_json = json.dumps(response, cls=Event.JSONEncoder)
+            response_json = json_generic.encode(response)
             ch.basic_publish(exchange='',
                              routing_key=properties.reply_to,
                              properties=pika.BasicProperties(correlation_id=properties.correlation_id),
@@ -73,8 +42,7 @@ class Messenger(object):
 
     def _process_response(self, ch, method, properties, body):
         if properties.correlation_id in self.response_callbacks:
-            decoder = Event.JSONDecoder()
-            event = decoder.decode(body.decode("utf-8"))
+            event = json_generic.decode(body.decode("utf-8"))
 
             self.response_callbacks[properties.correlation_id](event)
             del(self.response_callbacks[properties.correlation_id])
@@ -98,7 +66,7 @@ class Messenger(object):
         self.channel.basic_consume(message_handler(callback), queue=queue, no_ack=True)
 
     def publish_to_frontend(self, event, response_callback=None):
-        event_json = json.dumps(event, cls=event.JSONEncoder)
+        event_json = json_generic.encode(event)
         properties = None
         if response_callback:
             properties = self._add_response_callback(response_callback)
@@ -106,7 +74,7 @@ class Messenger(object):
                                    body=event_json, properties=properties)
 
     def publish_to_backend(self, subscriber_name, event, response_callback=None):
-        event_json = json.dumps(event, cls=Event.JSONEncoder)
+        event_json = json_generic.encode(event)
         properties = None
         if response_callback:
             properties = self._add_response_callback(response_callback)
