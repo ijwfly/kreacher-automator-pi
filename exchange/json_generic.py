@@ -49,7 +49,7 @@ class JSONSerializibleMixin(object):
         subclasses = JSONSerializibleMixin._get_children(JSONSerializibleMixin)
         cls = [cls for cls in subclasses if cls.__name__ == obj_dict["class_name"]]
         if not cls:
-            raise ValueError("Object not imported.")
+            raise ValueError("Object not imported: {}".format(obj_dict["class_name"]))
         obj = cls[0]()
         for key in obj_dict["obj_dict"]:
             value = obj_dict["obj_dict"].get(key, None)

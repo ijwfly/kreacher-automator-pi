@@ -3,6 +3,8 @@ import re
 import settings
 
 # DD-WRT live info API
+from exchange import json_generic
+
 url = "http://" + settings.ROUTER_IP + "/Info.live.htm"
 
 
@@ -29,8 +31,8 @@ class DHCPLease(object):
         return hash(self.mac_addr)
 
 
-class WirelessClient(object):
-    def __init__(self, mac_addr, interface, time, tx_rate=0, rx_rate=0, signal=0, noise=0, SNR=0, id=0):
+class WirelessClient(json_generic.JSONSerializibleMixin):
+    def __init__(self, mac_addr=None, interface=None, time=None, tx_rate=0, rx_rate=0, signal=0, noise=0, SNR=0, id=0):
         self.mac_addr = mac_addr
         self.interface = interface
         self.time = time

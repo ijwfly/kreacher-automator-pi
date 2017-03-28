@@ -173,14 +173,12 @@ def presence_notifier_handler(event):
     if len(event.connected_unknown_devices):
         message += "Подключены неизвестные устройства: "
         for device in event.connected_unknown_devices:
-            print(device)
-            message += device["mac_addr"]
+            message += device.mac_addr
         message += "\n"
     if len(event.disconnected_unknown_devices):
         message += "Неизвестные устройства отключились от сети: "
         for device in event.disconnected_unknown_devices:
-            print(device)
-            message += device["mac_addr"]
+            message += device.mac_addr
         message += "\n"
     bot.send_message(settings.TELEGRAM_ADMIN_ID, message)
 

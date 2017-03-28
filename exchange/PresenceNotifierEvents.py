@@ -1,3 +1,4 @@
+import backend.presencenotify # needed for json_generic
 from exchange import Event
 
 
