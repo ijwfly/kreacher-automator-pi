@@ -12,5 +12,5 @@ class EventFailure(Event):
 
 
 class EventInfo(Event):
-    def __init__(self, info):
+    def __init__(self, info=None):
         self.info = info

@@ -66,7 +66,7 @@ class BulbProcessor(object):
         self.in_use.clear()
 
 
-if __name__ == "__main__":
+def run():
     messenger = Messenger(settings.RABBITMQ_HOST)
     bulb = BulbProcessor(settings.MAGIC_BULB_ADDR)
 
@@ -74,3 +74,7 @@ if __name__ == "__main__":
     print("registered!")
 
     messenger.wait_for_messages(False)
+
+
+if __name__ == "__main__":
+    run()

@@ -173,12 +173,12 @@ def presence_notifier_handler(event):
     if len(event.connected_unknown_devices):
         message += "Подключены неизвестные устройства: "
         for device in event.connected_unknown_devices:
-            message += device.mac_addr
+            message += device.mac_addr + " "
         message += "\n"
     if len(event.disconnected_unknown_devices):
         message += "Неизвестные устройства отключились от сети: "
         for device in event.disconnected_unknown_devices:
-            message += device.mac_addr
+            message += device.mac_addr + " "
         message += "\n"
     bot.send_message(settings.TELEGRAM_ADMIN_ID, message)
 
@@ -193,7 +193,7 @@ def handle_event(event):
         presence_notifier_handler(event)
 
 
-if __name__ == "__main__":
+def run():
     try:
         messenger.subscribe_frontend(handle_event)
         messenger.wait_for_messages()
@@ -202,3 +202,5 @@ if __name__ == "__main__":
     except Exception as exception:
         logging.error("telegram frontend exception: " + exception)
 
+if __name__ == "__main__":
+    run()

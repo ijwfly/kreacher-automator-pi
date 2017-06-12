@@ -24,7 +24,7 @@ def handle_event(event):
         return CommonEvents.EventSuccess()
 
 
-if __name__ == "__main__":
+def run():
     messenger.subscribe_backend("scheduler", handle_event)
     messenger.wait_for_messages()
 
@@ -34,3 +34,6 @@ if __name__ == "__main__":
             time.sleep(10)
     except Exception as exception:
         logging.error("scheduler exception: " + exception)
+
+if __name__ == "__main__":
+    run()

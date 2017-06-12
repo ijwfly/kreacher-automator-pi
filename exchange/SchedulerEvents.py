@@ -3,25 +3,13 @@ from exchange import Event
 
 class EventScheduleTo(Event):
 
-    def __init__(self, time, receiver, event):
+    def __init__(self, time=None, receiver=None, event=None):
         self.time = time
         self.receiver = receiver
-        if isinstance(event, Event):
-            self.event = event.__dict__
-            self.event["name"] = type(event).__name__
-        elif isinstance(event, dict):
-            self.event = event
-        else:
-            raise TypeError
+        self.event = event
 
     def get_event(self):
-        event = self.event.copy()
-        event_name = event["name"]
-        del(event["name"])
-        if event_name in Event.registered_events:
-            return Event.registered_events[event_name](**event)
-        else:
-            return Event(event_name)
+        return self.event
 
 
 class ClearScheduledTasks(Event):

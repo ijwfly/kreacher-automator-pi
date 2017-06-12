@@ -21,8 +21,10 @@ def handle_event(event):
         return CommonEvents.EventFailure()
 
 
-if __name__ == "__main__":
+def run():
     messenger.subscribe_backend("systemcmd", handle_event)
     print("registered!")
-
     messenger.wait_for_messages(False)
+
+if __name__ == "__main__":
+    run()
